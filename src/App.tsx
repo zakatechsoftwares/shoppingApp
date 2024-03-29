@@ -74,7 +74,7 @@ function App() {
   ]);
 
   const config: any = {
-    public_key: process.env.REACT_APP_FLUTTERWAVE_PUBLIC_KEY,
+    public_key: "FLWPUBK_TEST-e4bb46908aa02f101fc0420306b1bc17-X", //process.env.REACT_APP_FLUTTERWAVE_PUBLIC_KEY,
     tx_ref: Date.now(),
     amount: money.allocated,
     currency: money.currencyUnit,
