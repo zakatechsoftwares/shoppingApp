@@ -2,8 +2,9 @@ import { PayloadAction, createSlice } from "@reduxjs/toolkit";
 
 export type Allocated = {
   id: string;
-  department: string;
-  amountForDepartment: number;
+  items: string;
+  quantity: number;
+  unitPrice: number;
 };
 
 export type AllocatedArrayType = Allocated[];
@@ -14,9 +15,13 @@ export const AllocatedSlice = createSlice({
   name: "allocatedBudget",
   initialState,
   reducers: {
+    clearCart: (state: AllocatedArrayType) => {
+      state.length = 0;
+
+      // let array: number[] = [];
+    },
     allocate: (state: AllocatedArrayType, action: PayloadAction<Allocated>) => {
       state.push(action.payload);
-      console.log(state);
 
       // let array: number[] = [];
     },
@@ -27,7 +32,7 @@ export const AllocatedSlice = createSlice({
       });
       return filtered;
     },
-    increaseAmount: (
+    increaseQuantity: (
       state: AllocatedArrayType,
       action: PayloadAction<string>
     ) => {
@@ -35,7 +40,25 @@ export const AllocatedSlice = createSlice({
         if (element.id === action.payload) {
           return {
             ...element,
-            amountForDepartment: element.amountForDepartment + 10,
+            quantity: element.quantity + 1,
+          };
+          //return element;
+        } else {
+          return element;
+        }
+      });
+
+      // console.log(newAllocated);
+    },
+    decreaseQuantity: (
+      state: AllocatedArrayType,
+      action: PayloadAction<string>
+    ) => {
+      return state.map((element) => {
+        if (element.id === action.payload) {
+          return {
+            ...element,
+            quantity: element.quantity - 1,
           };
           //return element;
         } else {
@@ -49,7 +72,13 @@ export const AllocatedSlice = createSlice({
 });
 
 export default AllocatedSlice.reducer;
-export const { allocate, deleteItem, increaseAmount } = AllocatedSlice.actions;
+export const {
+  allocate,
+  deleteItem,
+  increaseQuantity,
+  decreaseQuantity,
+  clearCart,
+} = AllocatedSlice.actions;
 export type AllocatedSliceType = ReturnType<
   typeof AllocatedSlice.getInitialState
 >;

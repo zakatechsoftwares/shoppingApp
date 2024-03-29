@@ -1,27 +1,36 @@
 import React, { useState, useEffect } from "react";
-import "../node_modules/bootstrap/dist/css/bootstrap.css";
-import "../node_modules/bootstrap-icons/font/bootstrap-icons.css";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Table from "react-bootstrap/Table";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
-import InputGroup from "react-bootstrap/InputGroup";
+import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { StoreType } from "./redux/store";
 import {
   //   AllocatedArrayType,
-  allocate,
+  // allocate,
   deleteItem,
-  increaseAmount,
+  increaseQuantity,
+  decreaseQuantity,
+  clearCart,
 } from "./redux/allocatedSlice";
 import {
-  budgetedChanged,
+  // budgetedChanged,
   moneyCalc,
   currencyUnitChanged,
 } from "./redux/moneySlice";
-import { nanoid } from "nanoid";
+//import { nanoid } from "nanoid";
+//import { itemForSale, countriesCurrency } from "./data/commodity";
+import { IoIosAdd } from "react-icons/io";
+import { IoIosRemove } from "react-icons/io";
+import {
+  useFlutterwave,
+  // closePaymentModal,
+  // FlutterWaveTypes,
+} from "flutterwave-react-v3";
+import Modal from "react-bootstrap/Modal";
 
 function App() {
   const allocatedBudget = useSelector(
@@ -30,14 +39,14 @@ function App() {
   const money = useSelector((state: StoreType) => state.moneyCalc);
   const dispatch = useDispatch();
 
-  const [departmentField, setDepartment] = useState<string>("");
-  const [amountForDepartmentField, setAmountForDepartment] = useState<number>();
-  // const [currencyUnit, setCurrencyUnit] = useState<string>("");
+  // const [items, setItems] = useState<{ item: string; unitPrice: number }>();
+  // const [quantity, setQuantity] = useState<number>();
+
   useEffect(() => {
     // console.log(allocatedBudget.length);
     let array: number[] = [];
     allocatedBudget?.forEach((element) => {
-      array.push(Number(element.amountForDepartment));
+      array.push(Number(element.quantity) * Number(element.unitPrice));
     });
 
     let totalSpent =
@@ -64,179 +73,175 @@ function App() {
     money.currencyUnit,
   ]);
 
+  const config: any = {
+    public_key: process.env.REACT_APP_FLUTTERWAVE_PUBLIC_KEY,
+    tx_ref: Date.now(),
+    amount: money.allocated,
+    currency: money.currencyUnit,
+    payment_options: "card,mobilemoney,ussd",
+    customer: {
+      email: "user@gmail.com",
+      phone_number: "08065410021",
+      name: "john doe",
+    },
+    customizations: {
+      title: "My store",
+      description: "Payment for items in cart",
+      logo: "https://st2.depositphotos.com/4403291/7418/v/450/depositphotos_74189661-stock-illustration-online-shop-log.jpg",
+    },
+  };
+  let navigate = useNavigate();
+
+  const handleFlutterPayment = useFlutterwave(config);
+
+  const [show, setShow] = useState(false);
+
+  const handleClose = () => setShow(false);
+
   return (
     <Container fluid>
+      <Modal show={show} onHide={handleClose}>
+        <Modal.Header closeButton>
+          <Modal.Title>Use this card details to test pay</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {" "}
+          Card number: 5531 8866 5214 2950
+          <br />
+          cvv: 564 <br />
+          Expiry: 09/32
+          <br />
+          Pin: 3310
+          <br />
+          OTP: 12345
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleClose}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
       <Row>
-        <p className="display-5">Company's Budget Allocation</p>
+        <p className="display-5 fw-normal">Shopping cart</p>
+
+        <Col lg={6}>
+          <Form.Control
+            plaintext
+            readOnly
+            placeholder={`Cart value : ${money.currencyUnit + money.allocated}`}
+            className="border border-1 rounded-2 ps-2 bg-info-subtle"
+          />
+        </Col>
         <Col
-          lg={3}
-          className="d-flex justify-content-center align-item-center "
+          lg={6}
+          className="d-flex justify-content-start align-items-center bg-info-subtle ps-2 rounded-2"
         >
-          <Form.Group
-            as={Row}
-            className="mb-3"
-            controlId="formPlaintextPassword"
-          >
-            <Form.Label column sm="3" className="">
-              Budget:{money.currencyUnit}
-            </Form.Label>
-            <Col sm="9">
-              <Form.Control
-                type="number"
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  dispatch(budgetedChanged(Number(e.target.value)));
-                }}
-                defaultValue={
-                  money.budgeted ? money.currencyUnit + money.budgeted : ""
-                }
-              />
-            </Col>
-          </Form.Group>
-        </Col>
-        <Col lg={3}>
-          <Form.Control
-            plaintext
-            readOnly
-            // defaultValue={null} //{`The remaining : $${remainder}`}
-            className="border border-1 rounded-2 ps-2"
-            placeholder={`The remaining amount : ${
-              money.currencyUnit + money.remaining
-            }`}
-          />
-        </Col>
-        <Col lg={3}>
-          <Form.Control
-            plaintext
-            readOnly
-            placeholder={`Spent so far : ${
-              money.currencyUnit + money.allocated
-            }`}
-            className="border border-1 rounded-2 ps-2"
-          />
-        </Col>
-        <Col lg={3}>
+          <Form.Label className="mb-0 me-1">Currency unit</Form.Label>
           <Form.Select
             aria-label="Default select example"
-            className="rounded-0"
+            className="rounded-2 "
+            style={{ width: "25%", height: "90%" }}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
               dispatch(currencyUnitChanged(e.target.value));
+              setShow(true);
             }}
             id="currencyUnit"
           >
             <option>Currency Unit</option>
-            <option value="$">$</option>
-            <option value="£">£</option>
-            <option value="€">€</option>
 
-            <option value="₦">₦</option>
+            <option value="USD">$</option>
+
+            <option value="NGN">₦</option>
           </Form.Select>
         </Col>
       </Row>
-      <Row>
+      <Row className="mt-5">
         <Col>
-          <p className="display-5 h4 ">Allocation</p>
+          <p className="h3 fw-normal ">Items in cart</p>
           <Table>
             <thead>
               <tr>
-                <th>Department</th>
-                <th>Allocated Budget</th>
-                <th>Increase by 10</th>
+                <th>Items</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Item Price</th>
+                <th>Increase Quantity</th>
+                <th>Decrease Quantity</th>
                 <th>Delete</th>
               </tr>
             </thead>
             <tbody>
-              {allocatedBudget.map(
-                ({ id, department, amountForDepartment }) => {
-                  return (
-                    <tr key={id}>
-                      <td>{department}</td>
-                      <td>${amountForDepartment}</td>
-                      <td>
-                        <Button
-                          className="p-0 bg-transparent border-0 text-dark"
-                          onClick={() => dispatch(increaseAmount(id))}
-                        >
-                          <i className="bi bi-file-plus font-color"></i>
-                        </Button>
-                      </td>
-                      <td>
-                        <Button
-                          className="p-0 bg-transparent border-0 text-dark"
-                          onClick={() => dispatch(deleteItem(id))}
-                        >
-                          <i className="bi bi-file-x"></i>
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                }
-              )}
+              {allocatedBudget.map(({ id, items, quantity, unitPrice }) => {
+                return (
+                  <tr key={id}>
+                    <td>{items}</td>
+                    <td>{money.currencyUnit + quantity}</td>
+                    <td>{money.currencyUnit + unitPrice}</td>
+                    <td>
+                      {money.currencyUnit +
+                        Number(quantity) * Number(unitPrice)}
+                    </td>
+                    <td>
+                      <Button
+                        className="p-0 bg-transparent border-0 text-dark"
+                        onClick={() => dispatch(increaseQuantity(id))}
+                      >
+                        <IoIosAdd />
+                      </Button>
+                    </td>
+                    <td>
+                      <Button
+                        className="p-0 bg-transparent border-0 text-dark"
+                        onClick={() => dispatch(decreaseQuantity(id))}
+                      >
+                        <IoIosRemove />
+                      </Button>
+                    </td>
+                    <td>
+                      <Button
+                        className="p-0 bg-transparent border-0 text-dark"
+                        onClick={() => dispatch(deleteItem(id))}
+                      >
+                        <i className="bi bi-x-lg p-1 fw-bold rounded-5 bg-danger text-white"></i>
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
         </Col>
       </Row>
       <Row>
-        <p className="h5">Change allocation</p>
-        <Col lg={3} className="d-flex flex-row">
-          <InputGroup.Text className="rounded-end-0">
-            Department
-          </InputGroup.Text>
-          <Form.Select
-            aria-label="Default select example"
-            className="rounded-0"
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-              setDepartment(e.target.value);
-            }}
-            id="department"
-          >
-            <option>Choose</option>
-            <option value="Marketing">Marketing</option>
-            <option value="Finance">Finance</option>
-            <option value="Transport">Transport</option>
-            <option value="Human Resource">Human Resource</option>
-            <option value="IT">IT</option>
-          </Form.Select>
-        </Col>
+        <Col lg={3} className="d-flex flex-row"></Col>
+        <Col lg={3} className="d-flex flex-row "></Col>
 
-        <Col lg={3} className="d-flex flex-row">
-          <Form.Control
-            type="number"
-            placeholder={`Amount allocated for ${departmentField}`}
-            aria-label="Username"
-            aria-describedby="basic-addon1"
-            className="rounded-0 "
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              setAmountForDepartment(Number(e.target.value));
-            }}
-            id="amount"
-          />
-        </Col>
+        <Col lg={3} className="d-flex flex-row"></Col>
+        <Col lg={1}></Col>
         <Col lg={1}>
           <Button
-            className="rounded-start-0 p-2"
+            className="rounded-start-0 py-2 px-5"
             onClick={() => {
-              if (amountForDepartmentField && departmentField) {
-                dispatch(
-                  allocate({
-                    id: nanoid(),
-                    department: departmentField,
-                    amountForDepartment: Number(amountForDepartmentField),
-                  })
-                );
-
-                setAmountForDepartment(0);
-                setDepartment("");
-                (document.getElementById("amount") as HTMLInputElement).value =
-                  "";
-                (
-                  document.getElementById("department") as HTMLInputElement
-                ).value = "";
+              if (money.currencyUnit) {
+                handleFlutterPayment({
+                  callback: (response) => {
+                    // dispatch(clearCart());
+                    dispatch(clearCart());
+                    //  closePaymentModal(); // this will close the modal programmatically
+                  },
+                  onClose: () => {
+                    navigate("/");
+                  },
+                });
+              } else {
+                alert("Kindly select the currency unit");
               }
             }}
           >
-            Save
+            Checkout
           </Button>
         </Col>
+        <Col lg={1}></Col>
       </Row>
     </Container>
   );
