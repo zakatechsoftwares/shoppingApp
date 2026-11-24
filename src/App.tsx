@@ -95,6 +95,7 @@ function App() {
   const handleFlutterPayment = useFlutterwave(config);
 
   const [show, setShow] = useState(false);
+  const [currencyError, setCurrencyError] = useState(false);
 
   const handleClose = () => setShow(false);
 
@@ -122,7 +123,12 @@ function App() {
         </Modal.Footer>
       </Modal>
       <Row>
-        <p className="display-5 fw-normal">Shopping cart</p>
+        <Col xs={12} className="d-flex justify-content-between align-items-center">
+          <p className="display-5 fw-normal mb-0">Shopping cart</p>
+          <Button variant="outline-primary" onClick={() => navigate("/")}>
+            Continue shopping
+          </Button>
+        </Col>
 
         <Col lg={6}>
           <Form.Control
@@ -141,13 +147,17 @@ function App() {
             aria-label="Default select example"
             className="rounded-2 "
             style={{ width: "25%", height: "90%" }}
+            value={money.currencyUnit}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
               dispatch(currencyUnitChanged(e.target.value));
-              setShow(true);
+              if (e.target.value) {
+                setCurrencyError(false);
+                setShow(true);
+              }
             }}
             id="currencyUnit"
           >
-            <option>Currency Unit</option>
+            <option value="">Currency Unit</option>
 
             <option value="USD">$</option>
 
@@ -175,7 +185,7 @@ function App() {
                 return (
                   <tr key={id}>
                     <td>{items}</td>
-                    <td>{money.currencyUnit + quantity}</td>
+                    <td>{quantity}</td>
                     <td>{money.currencyUnit + unitPrice}</td>
                     <td>
                       {money.currencyUnit +
@@ -210,6 +220,14 @@ function App() {
               })}
             </tbody>
           </Table>
+          {allocatedBudget.length === 0 && (
+            <p className="text-muted">
+              Your cart is empty.{" "}
+              <Button variant="link" className="p-0 align-baseline" onClick={() => navigate("/")}>
+                Browse products
+              </Button>
+            </p>
+          )}
         </Col>
       </Row>
       <Row>
@@ -221,6 +239,7 @@ function App() {
         <Col lg={1}>
           <Button
             className="rounded-start-0 py-2 px-5"
+            disabled={allocatedBudget.length === 0}
             onClick={() => {
               if (money.currencyUnit) {
                 handleFlutterPayment({
@@ -234,12 +253,17 @@ function App() {
                   },
                 });
               } else {
-                alert("Kindly select the currency unit");
+                setCurrencyError(true);
               }
             }}
           >
             Checkout
           </Button>
+          {currencyError && (
+            <p className="text-danger small mt-2 text-nowrap text-end">
+              Select a currency unit first
+            </p>
+          )}
         </Col>
         <Col lg={1}></Col>
       </Row>

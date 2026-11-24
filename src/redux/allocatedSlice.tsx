@@ -54,8 +54,10 @@ export const AllocatedSlice = createSlice({
       state: AllocatedArrayType,
       action: PayloadAction<string>
     ) => {
-      return state.map((element) => {
+      // At quantity 1, decreasing removes the item instead of going to 0.
+      return state.flatMap((element) => {
         if (element.id === action.payload) {
+          if (element.quantity <= 1) return [];
           return {
             ...element,
             quantity: element.quantity - 1,

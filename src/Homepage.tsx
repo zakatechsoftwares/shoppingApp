@@ -28,15 +28,23 @@ function Homepage() {
     title: string;
   };
   const [data, setData] = useState<ObjectType[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">(
+    "loading"
+  );
   const itemsInCart = useSelector((state: StoreType) => state.allocatedBudget);
   let navigate = useNavigate();
   let dispatch = useDispatch();
   useEffect(() => {
     fetch("https://fakestoreapi.com/products?limit=12")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then((json) => {
         setData(json);
-      });
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
   }, []);
 
   const [show, setShow] = useState(false);
@@ -80,6 +88,14 @@ function Homepage() {
         </Container>
       </Navbar>
 
+      {status === "loading" && (
+        <p className="text-center text-muted my-5">Loading products…</p>
+      )}
+      {status === "error" && (
+        <p className="text-center text-danger my-5">
+          Couldn't load products. Please refresh the page to try again.
+        </p>
+      )}
       <Row xs={1} md={2} lg={4} className="g-4">
         {data.map((item) => {
           const itemExistsInCart = itemsInCart.find(
