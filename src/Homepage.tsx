@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Container from "react-bootstrap/Container";
 import Nav from "react-bootstrap/Nav";
 import Card from "react-bootstrap/Card";
@@ -12,6 +12,14 @@ import Modal from "react-bootstrap/Modal";
 import { allocate, deleteItem } from "./redux/allocatedSlice";
 import { useNavigate } from "react-router-dom";
 import { StoreType } from "./redux/store";
+
+// Cuts text off after the given number of lines, ending with "…".
+const clampLines = (lines: number): React.CSSProperties => ({
+  display: "-webkit-box",
+  WebkitLineClamp: lines,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+});
 
 function Homepage() {
   const addedItems = useSelector((state: StoreType) => state.allocatedBudget);
@@ -48,6 +56,25 @@ function Homepage() {
   }, []);
 
   const [show, setShow] = useState(false);
+  const [selected, setSelected] = useState<ObjectType | null>(null);
+
+  const isInCart = (id: string) =>
+    itemsInCart.some((cartItem) => cartItem.id === id);
+
+  const toggleCart = (item: ObjectType) => {
+    if (isInCart(item.id)) {
+      dispatch(deleteItem(item.id));
+    } else {
+      dispatch(
+        allocate({
+          id: item.id,
+          items: item.title,
+          quantity: 1,
+          unitPrice: Number(item.price),
+        })
+      );
+    }
+  };
 
   const handleClose = () => setShow(false);
 
@@ -96,57 +123,112 @@ function Homepage() {
           Couldn't load products. Please refresh the page to try again.
         </p>
       )}
-      <Row xs={1} md={2} lg={4} className="g-4">
+      <Row xs={1} sm={2} lg={4} className="g-4 my-3">
         {data.map((item) => {
-          const itemExistsInCart = itemsInCart.find(
-            (cartItem) => cartItem.id === item.id
-          );
+          const inCart = isInCart(item.id);
 
           return (
-            <Col key={item.id} style={{ height: "60vh" }} className="my-5">
-              <Card className="mb-5">
-                {" "}
-                <Card.Img
-                  variant="top"
-                  src={item.image}
-                  style={{ height: "30vh" }}
-                />
-                <Card.Body style={{ height: "30vh" }}>
-                  <Card.Title style={{ height: "10vh", overflow: "hidden" }}>
+            <Col key={item.id}>
+              <Card className="h-100 shadow-sm">
+                <div
+                  className="bg-white d-flex align-items-center justify-content-center p-3 border-bottom"
+                  style={{ height: 280 }}
+                >
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    style={{
+                      maxHeight: "100%",
+                      maxWidth: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
+                </div>
+                <Card.Body className="d-flex flex-column">
+                  <Card.Title className="fs-6" style={clampLines(2)}>
                     {item.title}
                   </Card.Title>
                   <p className="fw-semibold mb-1">
                     ${Number(item.price).toFixed(2)}
                   </p>
-                  <Card.Text style={{ height: "16vh", overflow: "hidden" }}>
+                  <Card.Text
+                    className="text-muted small mb-2"
+                    style={clampLines(2)}
+                  >
                     {item.description}
                   </Card.Text>
+                  <Button
+                    variant="link"
+                    className="p-0 mt-auto align-self-start"
+                    onClick={() => setSelected(item)}
+                  >
+                    Details
+                  </Button>
                 </Card.Body>
                 <Button
-                  variant="primary"
-                  onClick={() => {
-                    if (itemExistsInCart) {
-                      dispatch(deleteItem(item.id));
-                    } else {
-                      dispatch(
-                        allocate({
-                          id: item.id,
-                          items: item.title,
-                          quantity: 1,
-                          unitPrice: Number(item.price),
-                        })
-                      );
-                    }
-                  }}
+                  variant={inCart ? "outline-danger" : "primary"}
+                  className="rounded-0 rounded-bottom"
+                  onClick={() => toggleCart(item)}
                 >
                   <FaCartPlus className="me-1" />
-                  {itemExistsInCart ? "Remove from cart" : "Add to cart"}
+                  {inCart ? "Remove from cart" : "Add to cart"}
                 </Button>
               </Card>
             </Col>
           );
         })}
       </Row>
+
+      <Modal
+        show={selected !== null}
+        onHide={() => setSelected(null)}
+        size="lg"
+        centered
+      >
+        {selected && (
+          <>
+            <Modal.Header closeButton>
+              <Modal.Title className="fs-5">{selected.title}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Row className="g-4 align-items-center">
+                <Col md={5} className="text-center">
+                  <img
+                    src={selected.image}
+                    alt={selected.title}
+                    style={{
+                      maxHeight: 360,
+                      maxWidth: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
+                </Col>
+                <Col md={7}>
+                  <p className="fs-4 fw-semibold mb-2">
+                    ${Number(selected.price).toFixed(2)}
+                  </p>
+                  <p className="text-capitalize text-muted small mb-3">
+                    {selected.category}
+                  </p>
+                  <p className="mb-0">{selected.description}</p>
+                </Col>
+              </Row>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={() => setSelected(null)}>
+                Close
+              </Button>
+              <Button
+                variant={isInCart(selected.id) ? "outline-danger" : "primary"}
+                onClick={() => toggleCart(selected)}
+              >
+                <FaCartPlus className="me-1" />
+                {isInCart(selected.id) ? "Remove from cart" : "Add to cart"}
+              </Button>
+            </Modal.Footer>
+          </>
+        )}
+      </Modal>
     </Container>
   );
 }
