@@ -32,12 +32,48 @@ import {
 } from "flutterwave-react-v3";
 import Modal from "react-bootstrap/Modal";
 
+// Used only if the live exchange rate can't be loaded. Update it now and then.
+const FALLBACK_USD_TO_NGN = 1368;
+
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: "$", NGN: "₦" };
+
+const roundToKobo = (n: number) => Math.round(n * 100) / 100;
+
+const formatAmount = (n: number) =>
+  n.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
 function App() {
   const allocatedBudget = useSelector(
     (state: StoreType) => state.allocatedBudget
   );
   const money = useSelector((state: StoreType) => state.moneyCalc);
   const dispatch = useDispatch();
+
+  // Product prices come in US dollars. When the shopper picks naira, prices
+  // and the amount charged are converted with today's rate, or the backup
+  // rate below if the rate service can't be reached.
+  const [usdToNgn, setUsdToNgn] = useState(FALLBACK_USD_TO_NGN);
+  const [rateIsLive, setRateIsLive] = useState(false);
+  useEffect(() => {
+    fetch("https://open.er-api.com/v6/latest/USD")
+      .then((res) => res.json())
+      .then((json) => {
+        const ngn = Number(json?.rates?.NGN);
+        if (json?.result === "success" && ngn > 0) {
+          setUsdToNgn(ngn);
+          setRateIsLive(true);
+        }
+      })
+      .catch(() => {
+        // Keep the backup rate.
+      });
+  }, []);
+  const rate = money.currencyUnit === "NGN" ? usdToNgn : 1;
+  const symbol = CURRENCY_SYMBOLS[money.currencyUnit] ?? "";
+  const price = (usd: number) => symbol + formatAmount(usd * rate);
 
   // const [items, setItems] = useState<{ item: string; unitPrice: number }>();
   // const [quantity, setQuantity] = useState<number>();
@@ -46,13 +82,14 @@ function App() {
     // console.log(allocatedBudget.length);
     let array: number[] = [];
     allocatedBudget?.forEach((element) => {
-      array.push(Number(element.quantity) * Number(element.unitPrice));
+      array.push(Number(element.quantity) * Number(element.unitPrice) * rate);
     });
 
-    let totalSpent =
+    let totalSpent = roundToKobo(
       array.length > 0
         ? array.reduce((sum, element) => Number(sum) + Number(element))
-        : 0;
+        : 0
+    );
 
     let remainingAmount: number = Number(money.budgeted) - Number(totalSpent);
 
@@ -71,6 +108,7 @@ function App() {
     money.allocated,
     money.remaining,
     money.currencyUnit,
+    rate,
   ]);
 
   const config: any = {
@@ -134,7 +172,7 @@ function App() {
           <Form.Control
             plaintext
             readOnly
-            placeholder={`Cart value : ${money.currencyUnit + money.allocated}`}
+            placeholder={`Cart value : ${symbol + formatAmount(money.allocated)}`}
             className="border border-1 rounded-2 ps-2 bg-info-subtle"
           />
         </Col>
@@ -163,6 +201,12 @@ function App() {
 
             <option value="NGN">₦</option>
           </Form.Select>
+          {money.currencyUnit === "NGN" && (
+            <small className="ms-2 text-muted">
+              $1 = ₦{formatAmount(usdToNgn)}
+              {rateIsLive ? " (today's rate)" : " (backup rate)"}
+            </small>
+          )}
         </Col>
       </Row>
       <Row className="mt-5">
@@ -186,11 +230,8 @@ function App() {
                   <tr key={id}>
                     <td>{items}</td>
                     <td>{quantity}</td>
-                    <td>{money.currencyUnit + unitPrice}</td>
-                    <td>
-                      {money.currencyUnit +
-                        Number(quantity) * Number(unitPrice)}
-                    </td>
+                    <td>{price(Number(unitPrice))}</td>
+                    <td>{price(Number(quantity) * Number(unitPrice))}</td>
                     <td>
                       <Button
                         className="p-0 bg-transparent border-0 text-dark"

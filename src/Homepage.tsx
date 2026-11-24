@@ -115,7 +115,10 @@ function Homepage() {
                   <Card.Title style={{ height: "10vh", overflow: "hidden" }}>
                     {item.title}
                   </Card.Title>
-                  <Card.Text style={{ height: "20vh", overflow: "hidden" }}>
+                  <p className="fw-semibold mb-1">
+                    ${Number(item.price).toFixed(2)}
+                  </p>
+                  <Card.Text style={{ height: "16vh", overflow: "hidden" }}>
                     {item.description}
                   </Card.Text>
                 </Card.Body>
